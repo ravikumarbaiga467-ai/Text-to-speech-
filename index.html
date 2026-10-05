@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Groq Text to Speech</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #111827, #374151);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 650px;
+  background: white;
+  padding: 28px;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.3);
+}
+
+h1 {
+  margin-top: 0;
+  color: #111827;
+}
+
+p {
+  color: #6b7280;
+}
+
+label {
+  display: block;
+  margin: 16px 0 8px;
+  font-weight: bold;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+textarea {
+  min-height: 160px;
+  resize: vertical;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: #111827;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+button:hover {
+  background: #000;
+}
+
+audio {
+  width: 100%;
+  margin-top: 20px;
+}
+
+#status {
+  margin-top: 15px;
+  color: #4b5563;
+}
+
+.note {
+  margin-top: 18px;
+  padding: 12px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #6b7280;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <h1>🎙️ Groq Text to Speech</h1>
+
+  <p>Convert your text into speech using Groq API.</p>
+
+  <label>Groq API Key</label>
+  <input
+    id="apiKey"
+    type="password"
+    placeholder="gsk_..."
+    autocomplete="off"
+  >
+
+  <label>Enter Text</label>
+
+  <textarea
+    id="text"
+    maxlength="200"
+    placeholder="Enter up to 200 characters..."
+  ></textarea>
+
+  <div class="row">
+
+    <div>
+      <label>Voice</label>
+
+      <select id="voice">
+        <option value="austin">Austin</option>
+        <option value="autumn">Autumn</option>
+        <option value="diana">Diana</option>
+        <option value="hannah">Hannah</option>
+        <option value="troy">Troy</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Speed</label>
+
+      <input
+        id="speed"
+        type="number"
+        min="0.5"
+        max="5"
+        step="0.1"
+        value="1"
+      >
+    </div>
+
+  </div>
+
+  <button id="generate">
+    Generate Speech
+  </button>
+
+  <div id="status"></div>
+
+  <audio id="audio" controls hidden></audio>
+
+  <div class="note">
+    Model: <b>canopylabs/orpheus-v1-english</b><br>
+    API: Groq Audio Speech POST
+  </div>
+
+</div>
+
+<script>
+
+const API_URL =
+  "https://api.groq.com/openai/v1/audio/speech";
+
+const MODEL =
+  "canopylabs/orpheus-v1-english";
+
+const generateButton =
+  document.getElementById("generate");
+
+const apiKey =
+  document.getElementById("apiKey");
+
+const text =
+  document.getElementById("text");
+
+const voice =
+  document.getElementById("voice");
+
+const speed =
+  document.getElementById("speed");
+
+const status =
+  document.getElementById("status");
+
+const audio =
+  document.getElementById("audio");
+
+
+generateButton.addEventListener("click", async () => {
+
+  const key = apiKey.value.trim();
+  const input = text.value.trim();
+
+  if (!key) {
+    status.textContent =
+      "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"
+    return;
+  }
+
+  if (!input) {
+    status.textContent =
+      "Please enter some text.";
+    return;
+  }
+
+  if (input.length > 200) {
+    status.textContent =
+      "Maximum 200 characters allowed.";
+    return;
+  }
+
+  generateButton.disabled = true;
+
+  status.textContent =
+    "Generating speech...";
+
+  audio.hidden = true;
+
+  try {
+
+    const response = await fetch(API_URL, {
+
+      method: "POST",
+
+      headers: {
+        "Authorization": "Bearer " + key,
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+
+        model: MODEL,
+
+        input: input,
+
+        voice: voice.value,
+
+        response_format: "wav",
+
+        speed: Number(speed.value)
+
+      })
+
+    });
+
+    if (!response.ok) {
+
+      let errorMessage =
+        "Something went wrong.";
+
+      try {
+
+        const errorData =
+          await response.json();
+
+        errorMessage =
+          errorData?.error?.message ||
+          errorMessage;
+
+      } catch {}
+
+      throw new Error(errorMessage);
+    }
+
+    const audioBlob =
+      await response.blob();
+
+    const audioURL =
+      URL.createObjectURL(audioBlob);
+
+    audio.src = audioURL;
+
+    audio.hidden = false;
+
+    status.textContent =
+      "✅ Speech generated successfully.";
+
+    audio.play().catch(() => {});
+
+  } catch (error) {
+
+    console.error(error);
+
+    status.textContent =
+      "❌ " + error.message;
+
+  } finally {
+
+    generateButton.disabled = false;
+
+  }
+
+});
+
+</script>
+
+</body>
+  </html>
